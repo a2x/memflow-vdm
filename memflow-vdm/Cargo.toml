@@ -1,0 +1,20 @@
+[package]
+name = "memflow-vdm"
+version = "0.1.0"
+authors = ["a2x"]
+edition = "2021"
+readme = "../README.md"
+repository = "https://github.com/a2x/memflow-vdm"
+license = "MIT"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+memflow = { version = "0.2" }
+thiserror = "1.0"
+windows = "0.52"
+x86_64 = { version = "0.14", default-features = false }
+
+[profile.release]
+lto = true
