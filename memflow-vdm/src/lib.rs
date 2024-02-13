@@ -167,14 +167,15 @@ impl Clone for Box<dyn PhysMemClone> {
 }
 
 #[derive(Clone)]
-pub struct VdmCtx {
+pub struct VdmConnector {
     /// The physical memory object.
     pub mem: Box<dyn PhysMemClone>,
 
     metadata: Option<PhysicalMemoryMetadata>,
 }
 
-impl VdmCtx {
+impl VdmConnector {
+    /// Creates a new `VdmConnector` with the specified physical memory object.
     pub fn new(mem: Box<dyn PhysMemClone>) -> Self {
         Self {
             mem,
@@ -182,6 +183,7 @@ impl VdmCtx {
         }
     }
 
+    /// Creates a new `VdmConnector` with the specified physical memory object and metadata.
     pub fn new_with_metadata(mem: Box<dyn PhysMemClone>, metadata: PhysicalMemoryMetadata) -> Self {
         Self {
             mem,
@@ -190,7 +192,7 @@ impl VdmCtx {
     }
 }
 
-impl PhysicalMemory for VdmCtx {
+impl PhysicalMemory for VdmConnector {
     fn phys_read_raw_iter(
         &mut self,
         MemOps {
@@ -260,4 +262,4 @@ impl PhysicalMemory for VdmCtx {
     }
 }
 
-cglue_impl_group!(VdmCtx, ConnectorInstance<'a>, {});
+cglue_impl_group!(VdmConnector, ConnectorInstance<'a>, {});

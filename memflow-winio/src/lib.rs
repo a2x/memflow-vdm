@@ -5,7 +5,7 @@ use std::mem;
 
 use memflow::prelude::v1::*;
 
-use memflow_vdm::{MapPhysMemResult, MapPhysMemResultBoxed, PhysAddr, PhysMem, VdmCtx, VirtAddr};
+use memflow_vdm::*;
 
 use windows::core::s;
 use windows::Win32::Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE};
@@ -175,8 +175,8 @@ impl PhysMem for WinIo {
 }
 
 #[connector(name = "winio")]
-pub fn create_connector(_args: &ConnectorArgs) -> memflow::error::Result<VdmCtx> {
+pub fn create_connector(_args: &ConnectorArgs) -> memflow::error::Result<VdmConnector> {
     let io = WinIo::new().map_err(|_| memflow::error::Error::from(ErrorOrigin::Connector))?;
 
-    Ok(VdmCtx::new(Box::new(io)))
+    Ok(VdmConnector::new(Box::new(io)))
 }
