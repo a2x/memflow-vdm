@@ -7,14 +7,19 @@ readme = "../README.md"
 repository = "https://github.com/a2x/memflow-vdm"
 license = "MIT"
 
-[lib]
-crate-type = ["lib", "cdylib"]
-
 [dependencies]
-memflow = { version = "0.2" }
+dyn-clone = "1.0"
+memflow = "0.2"
 thiserror = "1.0"
-windows = "0.52"
-x86_64 = { version = "0.14", default-features = false }
+winreg = "0.52"
 
-[profile.release]
-lto = true
+[dependencies.windows]
+version = "0.56"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage",
+    "Win32_Storage_FileSystem",
+    "Win32_System",
+    "Win32_System_IO",
+]

@@ -1,97 +1,38 @@
-pub use error::{Error, Result};
-
 use std::any::Any;
 use std::mem;
 
 use memflow::prelude::v1::*;
 
-use memflow_vdm::*;
+use memflow_vdm::{PhysicalMemory, Result, *};
 
 use windows::core::s;
 use windows::Win32::Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE};
 use windows::Win32::Storage::FileSystem::{CreateFileA, FILE_ATTRIBUTE_NORMAL, OPEN_EXISTING};
 use windows::Win32::System::IO::DeviceIoControl;
 
-pub mod error;
-
 #[repr(u32)]
-enum IoCtlCode {
-    MapPhysMem = 0x80102040,
-    UnmapPhysMem = 0x80102044,
+enum IoControlCode {
+    MapPhysicalMemory = 0x80102040,
+    UnmapPhysicalMemory = 0x80102044,
 }
 
-#[derive(Debug)]
+#[derive(Default)]
 #[repr(C)]
-struct MapUnmapPhysMemRequest {
-    /// Size of the memory to map.
+struct PhysicalMemoryMappingRequest {
     size: u64,
-
-    /// Physical address to map.
-    phys_addr: PhysAddr,
-
-    /// Handle to the section representing the mapped memory region.
+    phys_addr: u64,
     section_handle: HANDLE,
-
-    /// Virtual address of the mapped memory.
-    virt_addr: VirtAddr,
-
-    /// Handle to the object representing the mapped memory.
+    virt_addr: u64,
     obj_handle: HANDLE,
 }
 
-impl Default for MapUnmapPhysMemRequest {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            size: 0,
-            phys_addr: PhysAddr::new(0),
-            section_handle: HANDLE::default(),
-            virt_addr: VirtAddr::new(0),
-            obj_handle: HANDLE::default(),
-        }
-    }
+#[derive(Clone)]
+struct WinIoDriver {
+    handle: HANDLE,
 }
 
-impl MapPhysMemResult for MapUnmapPhysMemRequest {
-    #[inline]
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[inline]
-    fn virt_addr(&self) -> VirtAddr {
-        self.virt_addr
-    }
-}
-
-pub trait MapPhysMemResultExt: MapPhysMemResult {
-    /// Returns the handle to the object representing the mapped memory.
-    fn obj_handle(&self) -> HANDLE;
-
-    /// Returns the handle to the section representing the mapped memory region.
-    fn section_handle(&self) -> HANDLE;
-}
-
-impl MapPhysMemResultExt for MapUnmapPhysMemRequest {
-    #[inline]
-    fn obj_handle(&self) -> HANDLE {
-        self.obj_handle
-    }
-
-    #[inline]
-    fn section_handle(&self) -> HANDLE {
-        self.section_handle
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct WinIo {
-    /// Handle to the vulnerable driver.
-    pub handle: HANDLE,
-}
-
-impl WinIo {
-    pub fn new() -> Result<Self> {
+impl WinIoDriver {
+    fn open() -> Result<Self> {
         let handle = unsafe {
             CreateFileA(
                 s!(r"\\.\WinIo"),
@@ -108,7 +49,7 @@ impl WinIo {
     }
 }
 
-impl Drop for WinIo {
+impl Drop for WinIoDriver {
     #[inline]
     fn drop(&mut self) {
         if !self.handle.is_invalid() {
@@ -117,14 +58,40 @@ impl Drop for WinIo {
     }
 }
 
-impl PhysMem for WinIo {
-    fn map_phys_mem(
-        &self,
-        addr: PhysAddr,
-        size: usize,
-    ) -> memflow_vdm::Result<MapPhysMemResultBoxed> {
-        let mut req = MapUnmapPhysMemRequest {
-            size: size as u64,
+struct MapPhysicalMemoryResponse {
+    phys_addr: u64,
+    obj_handle: HANDLE,
+    section_handle: HANDLE,
+    size: usize,
+    virt_addr: u64,
+}
+
+impl PhysicalMemoryResponse for MapPhysicalMemoryResponse {
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[inline]
+    fn phys_addr(&self) -> u64 {
+        self.phys_addr
+    }
+
+    #[inline]
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    #[inline]
+    fn virt_addr(&self) -> u64 {
+        self.virt_addr
+    }
+}
+
+impl PhysicalMemory for WinIoDriver {
+    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<PhysicalMemoryResponseBoxed> {
+        let mut req = PhysicalMemoryMappingRequest {
+            size: size as _,
             phys_addr: addr,
             ..Default::default()
         };
@@ -132,51 +99,63 @@ impl PhysMem for WinIo {
         unsafe {
             DeviceIoControl(
                 self.handle,
-                IoCtlCode::MapPhysMem as u32,
+                IoControlCode::MapPhysicalMemory as _,
                 Some(&req as *const _ as *const _),
-                mem::size_of::<MapUnmapPhysMemRequest>() as u32,
+                mem::size_of::<PhysicalMemoryMappingRequest>() as _,
                 Some(&mut req as *mut _ as *mut _),
-                mem::size_of::<MapUnmapPhysMemRequest>() as u32,
+                mem::size_of::<PhysicalMemoryMappingRequest>() as _,
                 None,
                 None,
             )?;
         }
 
-        Ok(Box::new(req))
+        Ok(Box::new(MapPhysicalMemoryResponse {
+            phys_addr: addr,
+            obj_handle: req.obj_handle,
+            section_handle: req.section_handle,
+            size,
+            virt_addr: req.virt_addr,
+        }))
     }
 
-    fn unmap_phys_mem(&self, result: MapPhysMemResultBoxed) -> memflow_vdm::Result<()> {
-        let req = result
+    fn unmap_phys_mem(&self, mapping: PhysicalMemoryResponseBoxed) -> Result<()> {
+        let res = mapping
             .as_any()
-            .downcast_ref::<MapUnmapPhysMemRequest>()
+            .downcast_ref::<MapPhysicalMemoryResponse>()
             .unwrap();
 
-        let req = MapUnmapPhysMemRequest {
-            section_handle: req.section_handle(),
-            virt_addr: req.virt_addr(),
-            obj_handle: req.obj_handle(),
+        let req = PhysicalMemoryMappingRequest {
+            obj_handle: res.obj_handle,
+            section_handle: res.section_handle,
+            virt_addr: res.virt_addr(),
             ..Default::default()
         };
 
         unsafe {
             DeviceIoControl(
                 self.handle,
-                IoCtlCode::UnmapPhysMem as u32,
+                IoControlCode::UnmapPhysicalMemory as _,
                 Some(&req as *const _ as *const _),
-                mem::size_of::<MapUnmapPhysMemRequest>() as u32,
+                mem::size_of::<PhysicalMemoryMappingRequest>() as _,
                 None,
                 0,
                 None,
                 None,
             )
-            .map_err(Into::into)
+            .map_err(memflow_vdm::Error::Windows)
         }
     }
 }
 
 #[connector(name = "winio")]
-pub fn create_connector(_args: &ConnectorArgs) -> memflow::error::Result<VdmConnector> {
-    let io = WinIo::new().map_err(|_| memflow::error::Error::from(ErrorOrigin::Connector))?;
+pub fn create_connector<'a>(_args: &ConnectorArgs) -> memflow::error::Result<VdmConnector<'a>> {
+    let driver = WinIoDriver::open().map_err(|_| {
+        Error(ErrorOrigin::Connector, ErrorKind::Uninitialized)
+            .log_error("Unable to open a handle to the WinIo driver")
+    })?;
 
-    Ok(VdmConnector::new(Box::new(io)))
+    init_connector(Box::new(driver)).map_err(|_| {
+        Error(ErrorOrigin::Connector, ErrorKind::Uninitialized)
+            .log_error("Unable to initialize the VDM connector")
+    })
 }

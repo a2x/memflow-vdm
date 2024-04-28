@@ -16,7 +16,7 @@ memflow-vdm = { path = "../memflow-vdm" }
 thiserror = "1.0"
 
 [dependencies.windows]
-version = "0.52"
+version = "0.56"
 features = [
     "Win32_Foundation",
     "Win32_Security",

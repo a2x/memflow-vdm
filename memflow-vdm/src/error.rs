@@ -1,21 +1,21 @@
 use thiserror::Error;
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Failed to map physical memory")]
-    MapPhysMem,
+    #[error("unable to map physical memory")]
+    MapPhysicalMemory,
 
-    #[error("Failed to unmap physical memory")]
-    UnmapPhysMem,
+    #[error("unable to unmap physical memory")]
+    UnmapPhysicalMemory,
 
-    #[error("I/O error")]
+    #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    #[error("Windows error: {0}")]
+    #[error(transparent)]
     Windows(#[from] windows::core::Error),
 
     #[error("{0}")]
     Other(&'static str),
 }
-
-pub type Result<T> = std::result::Result<T, Error>;
