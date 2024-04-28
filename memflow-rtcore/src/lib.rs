@@ -152,7 +152,7 @@ impl PhysicalMemory for RtCore64Driver {
 pub fn create_connector<'a>(_args: &ConnectorArgs) -> memflow::error::Result<VdmConnector<'a>> {
     let driver = RtCore64Driver::open().map_err(|_| {
         Error(ErrorOrigin::Connector, ErrorKind::Uninitialized)
-            .log_error("Unable to open a handle to the WinIo driver")
+            .log_error("Unable to open a handle to the RtCore64 driver")
     })?;
 
     init_connector(Box::new(driver)).map_err(|_| {
