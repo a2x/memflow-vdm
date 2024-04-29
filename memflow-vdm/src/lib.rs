@@ -73,12 +73,14 @@ pub struct VdmMapData<T> {
 }
 
 impl<T> AsRef<MemoryMap<T>> for VdmMapData<T> {
+    #[inline]
     fn as_ref(&self) -> &MemoryMap<T> {
         &self.mappings
     }
 }
 
 impl<'a> Clone for VdmMapData<&'a mut [u8]> {
+    #[inline]
     fn clone(&self) -> Self {
         unsafe { Self::from_addrmap_mut(self.mapper.clone(), self.addr_mappings.clone()) }
     }

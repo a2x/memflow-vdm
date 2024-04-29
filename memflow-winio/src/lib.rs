@@ -50,7 +50,6 @@ impl WinIoDriver {
 }
 
 impl Drop for WinIoDriver {
-    #[inline]
     fn drop(&mut self) {
         if !self.handle.is_invalid() {
             unsafe { _ = CloseHandle(self.handle) }

@@ -85,7 +85,6 @@ impl RtCore64Driver {
 }
 
 impl Drop for RtCore64Driver {
-    #[inline]
     fn drop(&mut self) {
         if !self.handle.is_invalid() {
             unsafe { _ = CloseHandle(self.handle) }
