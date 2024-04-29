@@ -4,7 +4,7 @@ use winreg::RegKey;
 use crate::error::Result;
 
 #[repr(u16)]
-pub enum CmResourceMemory {
+enum CmResourceMemory {
     ReadWrite = 0x0,
     ReadOnly = 0x1,
     WriteOnly = 0x2,
@@ -17,7 +17,7 @@ pub enum CmResourceMemory {
 }
 
 #[repr(u8)]
-pub enum CmResourceType {
+enum CmResourceType {
     Null = 0,
     Port = 1,
     Interrupt = 2,
@@ -34,7 +34,7 @@ pub enum CmResourceType {
 }
 
 #[repr(i32)]
-pub enum InterfaceType {
+enum InterfaceType {
     Undefined = -1,
     Internal,
     Isa,
@@ -58,38 +58,38 @@ pub enum InterfaceType {
 }
 
 #[repr(C)]
-pub struct CmFullResourceDescriptor {
-    pub interface_type: InterfaceType,
-    pub bus_num: u32,
-    pub partial_resource_list: CmPartialResourceList,
+struct CmFullResourceDescriptor {
+    interface_type: InterfaceType,
+    bus_num: u32,
+    partial_resource_list: CmPartialResourceList,
 }
 
 #[repr(C, packed(4))]
-pub struct CmPartialResourceDescriptor {
-    pub type_: CmResourceType,
-    pub share_disposition: u8,
-    pub flags: u16,
-    pub data: CmPartialResourceDescriptorMemory,
+struct CmPartialResourceDescriptor {
+    type_: CmResourceType,
+    share_disposition: u8,
+    flags: u16,
+    data: CmPartialResourceDescriptorMemory,
 }
 
 #[repr(C, packed(4))]
-pub struct CmPartialResourceDescriptorMemory {
-    pub start: u64,
-    pub size: u64,
+struct CmPartialResourceDescriptorMemory {
+    start: u64,
+    size: u64,
 }
 
 #[repr(C)]
-pub struct CmPartialResourceList {
-    pub version: u16,
-    pub revision: u16,
-    pub count: u32,
-    pub partial_descriptors: [CmPartialResourceDescriptor; 1],
+struct CmPartialResourceList {
+    version: u16,
+    revision: u16,
+    count: u32,
+    partial_descriptors: [CmPartialResourceDescriptor; 1],
 }
 
 #[repr(C)]
-pub struct CmResourceList {
-    pub count: u32,
-    pub list: [CmFullResourceDescriptor; 1],
+struct CmResourceList {
+    count: u32,
+    list: [CmFullResourceDescriptor; 1],
 }
 
 #[derive(Debug)]

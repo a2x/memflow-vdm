@@ -1,7 +1,6 @@
 pub use error::{Error, Result};
 
 use std::any::Any;
-use std::mem;
 use std::sync::{Arc, Mutex};
 
 use dyn_clone::DynClone;
@@ -13,41 +12,36 @@ use phys_ranges::PhysicalMemoryRange;
 pub mod error;
 pub mod phys_ranges;
 
-pub type PhysicalMemoryResponseBoxed = Box<dyn Send + PhysicalMemoryResponse>;
 pub type VdmConnector<'a> = MappedPhysicalMemory<&'a mut [u8], VdmMapData<&'a mut [u8]>>;
 
 pub trait PhysicalMemory: Send + DynClone {
-    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<PhysicalMemoryResponseBoxed>;
-
-    fn unmap_phys_mem(&self, mapping: PhysicalMemoryResponseBoxed) -> Result<()>;
+    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<Box<dyn PhysicalMemoryResponse>>;
+    fn unmap_phys_mem(&self, mapping: Box<dyn PhysicalMemoryResponse>) -> Result<()>;
 }
 
 dyn_clone::clone_trait_object!(PhysicalMemory);
 
 pub trait PhysicalMemoryResponse: Send {
     fn as_any(&self) -> &dyn Any;
-
     fn phys_addr(&self) -> u64;
-
     fn size(&self) -> usize;
-
     fn virt_addr(&self) -> u64;
 }
 
 struct PhysicalMemoryMapper {
     mem: Box<dyn PhysicalMemory>,
-    mem_mappings: Vec<PhysicalMemoryResponseBoxed>,
+    mem_mappings: Vec<Box<dyn PhysicalMemoryResponse>>,
 }
 
 impl PhysicalMemoryMapper {
-    pub fn new(mem: Box<dyn PhysicalMemory>) -> Self {
+    fn new(mem: Box<dyn PhysicalMemory>) -> Self {
         Self {
             mem,
             mem_mappings: Vec::new(),
         }
     }
 
-    pub fn map_phys_ranges(&mut self, ranges: &[PhysicalMemoryRange]) -> Result<()> {
+    fn map_phys_ranges(&mut self, ranges: &[PhysicalMemoryRange]) -> Result<()> {
         for range in ranges {
             let mapping = self.mem.map_phys_mem(range.start_addr, range.size)?;
 
@@ -60,7 +54,7 @@ impl PhysicalMemoryMapper {
 
 impl Drop for PhysicalMemoryMapper {
     fn drop(&mut self) {
-        for mapping in mem::take(&mut self.mem_mappings) {
+        for mapping in self.mem_mappings.drain(..) {
             let _ = self.mem.unmap_phys_mem(mapping);
         }
     }

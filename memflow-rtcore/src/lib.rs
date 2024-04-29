@@ -93,7 +93,7 @@ impl Drop for RtCore64Driver {
 }
 
 impl PhysicalMemory for RtCore64Driver {
-    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<PhysicalMemoryResponseBoxed> {
+    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<Box<dyn PhysicalMemoryResponse>> {
         let req = PhysicalMemoryMappingRequest {
             addr,
             size: size as u32,
@@ -121,7 +121,7 @@ impl PhysicalMemory for RtCore64Driver {
         }))
     }
 
-    fn unmap_phys_mem(&self, mapping: PhysicalMemoryResponseBoxed) -> Result<()> {
+    fn unmap_phys_mem(&self, mapping: Box<dyn PhysicalMemoryResponse>) -> Result<()> {
         let res = mapping
             .as_any()
             .downcast_ref::<MapPhysicalMemoryResponse>()
