@@ -12,56 +12,49 @@ use phys_ranges::PhysicalMemoryRange;
 pub mod error;
 pub mod phys_ranges;
 
+pub type PhysicalMemoryResponseBoxed = Box<dyn Send + PhysicalMemoryResponse>;
 pub type VdmConnector<'a> = MappedPhysicalMemory<&'a mut [u8], VdmMapData<&'a mut [u8]>>;
 
-pub trait PhysicalMemory: Send + DynClone {
-    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<Box<dyn PhysicalMemoryResponse>>;
-    fn unmap_phys_mem(&self, mapping: Box<dyn PhysicalMemoryResponse>) -> Result<()>;
+pub trait PhysicalMemory: Send + Sync + DynClone {
+    fn map_phys_mem(&self, addr: u64, size: usize) -> Result<PhysicalMemoryResponseBoxed>;
+    fn unmap_phys_mem(&self, mapping: PhysicalMemoryResponseBoxed) -> Result<()>;
 }
 
 dyn_clone::clone_trait_object!(PhysicalMemory);
 
-pub trait PhysicalMemoryResponse: Send {
+pub trait PhysicalMemoryResponse {
     fn as_any(&self) -> &dyn Any;
     fn phys_addr(&self) -> u64;
     fn size(&self) -> usize;
     fn virt_addr(&self) -> u64;
 }
 
-struct PhysicalMemoryMapper {
+struct PhysicalMemoryRegionMapper {
     mem: Box<dyn PhysicalMemory>,
-    mem_mappings: Vec<Box<dyn PhysicalMemoryResponse>>,
+    mappings: Vec<PhysicalMemoryResponseBoxed>,
 }
 
-impl PhysicalMemoryMapper {
-    fn new(mem: Box<dyn PhysicalMemory>) -> Self {
-        Self {
-            mem,
-            mem_mappings: Vec::new(),
-        }
-    }
+impl PhysicalMemoryRegionMapper {
+    fn new(mem: Box<dyn PhysicalMemory>, ranges: &[PhysicalMemoryRange]) -> Result<Self> {
+        let mappings = ranges
+            .iter()
+            .map(|range| mem.map_phys_mem(range.start_addr, range.size))
+            .collect::<Result<Vec<_>>>()?;
 
-    fn map_phys_ranges(&mut self, ranges: &[PhysicalMemoryRange]) -> Result<()> {
-        for range in ranges {
-            let mapping = self.mem.map_phys_mem(range.start_addr, range.size)?;
-
-            self.mem_mappings.push(mapping);
-        }
-
-        Ok(())
+        Ok(Self { mem, mappings })
     }
 }
 
-impl Drop for PhysicalMemoryMapper {
+impl Drop for PhysicalMemoryRegionMapper {
     fn drop(&mut self) {
-        for mapping in self.mem_mappings.drain(..) {
+        for mapping in self.mappings.drain(..) {
             let _ = self.mem.unmap_phys_mem(mapping);
         }
     }
 }
 
 pub struct VdmMapData<T> {
-    mapper: Arc<Mutex<PhysicalMemoryMapper>>,
+    mapper: Arc<Mutex<PhysicalMemoryRegionMapper>>,
     mappings: MemoryMap<T>,
     addr_mappings: MemoryMap<(Address, umem)>,
 }
@@ -82,7 +75,7 @@ impl<'a> Clone for VdmMapData<&'a mut [u8]> {
 
 impl<'a> VdmMapData<&'a mut [u8]> {
     unsafe fn from_addrmap_mut(
-        mapper: Arc<Mutex<PhysicalMemoryMapper>>,
+        mapper: Arc<Mutex<PhysicalMemoryRegionMapper>>,
         map: MemoryMap<(Address, umem)>,
     ) -> Self {
         Self {
@@ -94,15 +87,13 @@ impl<'a> VdmMapData<&'a mut [u8]> {
 }
 
 pub fn init_connector<'a>(mem: Box<dyn PhysicalMemory>) -> Result<VdmConnector<'a>> {
-    let mapper = Arc::new(Mutex::new(PhysicalMemoryMapper::new(mem)));
+    let ranges = phys_ranges::get_phys_mem_ranges()?;
 
-    let phys_ranges = phys_ranges::get_phys_mem_ranges()?;
-
-    mapper.lock().unwrap().map_phys_ranges(&phys_ranges)?;
+    let mapper = Arc::new(Mutex::new(PhysicalMemoryRegionMapper::new(mem, &ranges)?));
 
     let mut mem_map = MemoryMap::new();
 
-    for mapping in &mapper.lock().unwrap().mem_mappings {
+    for mapping in &mapper.lock().unwrap().mappings {
         mem_map.push_remap(
             mapping.phys_addr().into(),
             mapping.size() as _,
