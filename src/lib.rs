@@ -1,4 +1,5 @@
 pub use error::{Error, Result};
+pub use phys_ranges::{get_phys_mem_ranges, PhysicalMemoryRange};
 
 use std::any::Any;
 use std::sync::{Arc, Mutex};
@@ -6,8 +7,6 @@ use std::sync::{Arc, Mutex};
 use dyn_clone::DynClone;
 
 use memflow::prelude::v1::*;
-
-use phys_ranges::PhysicalMemoryRange;
 
 pub mod error;
 pub mod phys_ranges;
@@ -76,18 +75,18 @@ impl<'a> Clone for VdmMapData<&'a mut [u8]> {
 impl<'a> VdmMapData<&'a mut [u8]> {
     unsafe fn from_addrmap_mut(
         mapper: Arc<Mutex<PhysicalMemoryRegionMapper>>,
-        map: MemoryMap<(Address, umem)>,
+        mem_map: MemoryMap<(Address, umem)>,
     ) -> Self {
         Self {
             mapper,
-            mappings: map.clone().into_bufmap_mut(),
-            addr_mappings: map,
+            mappings: mem_map.clone().into_bufmap_mut(),
+            addr_mappings: mem_map,
         }
     }
 }
 
 pub fn init_connector<'a>(mem: Box<dyn PhysicalMemory>) -> Result<VdmConnector<'a>> {
-    let ranges = phys_ranges::get_phys_mem_ranges()?;
+    let ranges = get_phys_mem_ranges()?;
 
     let mapper = Arc::new(Mutex::new(PhysicalMemoryRegionMapper::new(mem, &ranges)?));
 
