@@ -92,13 +92,20 @@ struct CmResourceList {
     list: [CmFullResourceDescriptor; 1],
 }
 
-#[derive(Debug)]
+/// Represents a physical memory range.
+#[derive(Clone, Copy, Debug)]
 pub struct PhysicalMemoryRange {
     pub start_addr: u64,
     pub end_addr: u64,
     pub size: usize,
 }
 
+/// Retrieves all physical memory ranges in the system by querying the Windows registry.
+///
+/// # Returns
+///
+/// Returns `Ok(Vec<PhysicalMemoryRange>)` if the physical memory ranges were successfully
+/// retrieved, otherwise an error is returned.
 pub fn get_phys_mem_ranges() -> Result<Vec<PhysicalMemoryRange>> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
