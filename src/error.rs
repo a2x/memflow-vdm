@@ -4,6 +4,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("driver not found")]
+    DriverNotFound,
+
     #[error("unable to map physical memory")]
     MapPhysicalMemory,
 

@@ -1,6 +1,6 @@
 [package]
 name = "memflow-vdm"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["a2x"]
 edition = "2021"
 readme = "README.md"
@@ -14,12 +14,5 @@ thiserror = "1.0"
 winreg = "0.52"
 
 [dependencies.windows]
-version = "0.56"
-features = [
-    "Win32_Foundation",
-    "Win32_Security",
-    "Win32_Storage",
-    "Win32_Storage_FileSystem",
-    "Win32_System",
-    "Win32_System_IO",
-]
+version = "0.58"
+features = ["Win32_Security", "Win32_System_Services"]

@@ -92,7 +92,7 @@ struct CmResourceList {
     list: [CmFullResourceDescriptor; 1],
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct PhysicalMemoryRange {
     pub start_addr: u64,
     pub end_addr: u64,
