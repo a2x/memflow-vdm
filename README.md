@@ -1,6 +1,10 @@
 # memflow-vdm
 
-A WIP Rust crate that aims to simplify the exploitation of vulnerable drivers that expose a physical memory read/write primitive using [memflow](https://github.com/memflow/memflow).
+A Rust crate that aims to simplify the exploitation of vulnerable Windows drivers that expose functionality to map/unmap
+arbitrary physical memory using [memflow](https://github.com/memflow/memflow).
 
-## Example projects
+> **Note:** This project is a work in progress, so the API may change.
+
+## Example Connectors
+
 * [memflow-winio](https://github.com/a2x/memflow-winio)

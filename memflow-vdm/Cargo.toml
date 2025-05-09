@@ -1,0 +1,18 @@
+[package]
+name = "memflow-vdm"
+version = "0.1.0"
+authors = ["a2x"]
+edition = "2024"
+readme = "../README.md"
+repository = "https://github.com/a2x/memflow-vdm"
+license = "MIT"
+
+[dependencies]
+memflow = "0.2"
+memflow-vdm-macros = { path = "../memflow-vdm-macros" }
+thiserror = "2.0"
+winreg = "0.55"
+
+[dependencies.windows]
+version = "0.61"
+features = ["Win32_Security", "Win32_System_Services"]

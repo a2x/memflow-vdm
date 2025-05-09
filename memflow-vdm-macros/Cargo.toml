@@ -1,0 +1,16 @@
+[package]
+name = "memflow-vdm-macros"
+version = "0.1.0"
+authors = ["a2x"]
+edition = "2024"
+readme = "../README.md"
+repository = "https://github.com/a2x/memflow-vdm"
+license = "MIT"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.20"
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }

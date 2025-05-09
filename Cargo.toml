@@ -1,18 +1,2 @@
-[package]
-name = "memflow-vdm"
-version = "0.1.1"
-authors = ["a2x"]
-edition = "2021"
-readme = "README.md"
-repository = "https://github.com/a2x/memflow-vdm"
-license = "MIT"
-
-[dependencies]
-dyn-clone = "1.0"
-memflow = "0.2"
-thiserror = "1.0"
-winreg = "0.52"
-
-[dependencies.windows]
-version = "0.58"
-features = ["Win32_Security", "Win32_System_Services"]
+[workspace]
+members = ["memflow-vdm", "memflow-vdm-macros"]
