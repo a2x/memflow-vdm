@@ -1,2 +1,3 @@
 [workspace]
-members = ["memflow-vdm", "memflow-vdm-macros"]
+members = ["memflow-vdm", "memflow-vdm-derive"]
+resolver = "3"

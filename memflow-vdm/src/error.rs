@@ -24,6 +24,9 @@ pub enum Error {
     Io(#[from] std::io::Error),
 
     #[error(transparent)]
+    Null(#[from] std::ffi::NulError),
+
+    #[error(transparent)]
     Windows(#[from] windows::core::Error),
 }
 

@@ -9,7 +9,7 @@ license = "MIT"
 
 [dependencies]
 memflow = "0.2"
-memflow-vdm-macros = { path = "../memflow-vdm-macros" }
+memflow-vdm-derive = { path = "../memflow-vdm-derive" }
 thiserror = "2.0"
 winreg = "0.55"
 

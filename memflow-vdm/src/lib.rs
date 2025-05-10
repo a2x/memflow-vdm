@@ -1,9 +1,10 @@
-pub use memflow_vdm_macros::*;
+pub use memflow_vdm_derive::*;
 
 pub use error::{Error, Result};
 
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
+use std::path::Path;
 use std::sync::Arc;
 
 use memflow::prelude::v1::*;
@@ -86,21 +87,35 @@ impl<'a, M: PhysicalMemory> VdmConnectorBuilder<'a, M> {
         self
     }
 
-    /// Specifies the name of an existing Windows service associated with the vulnerable driver.
+    /// Configures a Windows service for the vulnerable driver.
     ///
-    /// If the service exists, its started automatically if it isn't already before a handle to the
-    /// driver is opened via the `init_driver` callback. It also ensures the service will be
-    /// automatically stopped when the `VdmContext` is dropped.
+    /// This method will create a new service with `service_name` if `driver_path` is provided and
+    /// no service with that name already exists. If `driver_path` is `None`, it is assumed that a
+    /// service with the given `service_name` already exists, which will be opened.
     ///
-    /// This method will automatically call [`with_memory`](Self::with_memory) with the resulting
-    /// driver instance that implements the [`PhysicalMemory`] trait.
-    pub fn with_service<S, F>(mut self, service_name: S, init_driver: F) -> Result<Self>
+    /// The service is started automatically if not already running before the driver handle is
+    /// opened via the `init_driver` callback. The service will be automatically stopped when the
+    /// `VdmContext` is dropped.
+    ///
+    /// This method automatically calls [`with_memory`](Self::with_memory) with the resulting driver
+    /// instance that implements the [`PhysicalMemory`] trait.
+    pub fn with_service<S, P, F>(
+        mut self,
+        service_name: S,
+        driver_path: Option<P>,
+        init_driver: F,
+    ) -> Result<Self>
     where
         S: AsRef<str>,
+        P: AsRef<Path>,
         F: FnOnce() -> Result<M>,
     {
-        // TODO: Support creating the service automatically.
-        let service = ServiceManager::local_computer()?.open_service(service_name.as_ref())?;
+        let sm = ServiceManager::local_computer()?;
+
+        let service = match driver_path {
+            Some(path) => sm.create_service(service_name.as_ref(), path.as_ref()),
+            None => sm.open_service(service_name.as_ref()),
+        }?;
 
         service.start()?;
 
@@ -123,12 +138,12 @@ impl<'a, M: PhysicalMemory> VdmConnectorBuilder<'a, M> {
     /// [`with_memory`](Self::with_memory).
     pub fn build(self) -> Result<VdmConnector<'a, M>> {
         let mut mapper =
-            PhysicalMemoryMapper::with_mem(self.mem.expect("memory provider not set"))?;
+            PhysicalMemoryMapper::with_mem(self.mem.expect("physical memory provider not set"))?;
 
         match self.ranges.as_ref() {
-            Some(ranges) => mapper.map_ranges(ranges)?,
-            None => mapper.map_system_ranges()?,
-        }
+            Some(ranges) => mapper.map_ranges(ranges),
+            None => mapper.map_system_ranges(),
+        }?;
 
         let service = self.service.map(Arc::new);
 

@@ -1,5 +1,5 @@
 [package]
-name = "memflow-vdm-macros"
+name = "memflow-vdm-derive"
 version = "0.1.0"
 authors = ["a2x"]
 edition = "2024"
